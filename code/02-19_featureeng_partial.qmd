@@ -26,7 +26,7 @@ library(tidyverse)
 ```
 
 ```{r}
-fieldweather 
+fieldweather <- read_csv("../data/fieldweatherdata.csv")
 
 fieldweather
 ```
@@ -40,7 +40,11 @@ summary(fieldweather)
 
 Let's create some density plots to explore the weather data distributions.  
 ```{r}
-
+fieldweather %>%
+  pivot_longer(dayl_s:vp_pa) %>%
+  ggplot(aes(x=value)) +
+  geom_density() +
+  facet_wrap(~name, scales = "free")
 
 ```
 
@@ -100,6 +104,8 @@ A great package to work with dates and times in R is called **lubridate**, see v
 Next, let's create a column containing the month information.  
 
 ```{r fe_month}
+library(lubridate)
+library(dplyr)
 fe_month <- fieldweather %>%
   # Selecting needed variables
   dplyr::select(year, site, lat, lon,
@@ -111,18 +117,36 @@ fe_month <- fieldweather %>%
                 tmax.c = tmax_deg_c, 
                 tmin.c = tmin_deg_c,
                 vp.pa = vp_pa
-                ) 
+                ) %>%
   # Creating a date class variable  
-
+  mutate(date_chr = paste0(year,"/", yday)) %>%
+  mutate(date = as.Date(date_chr, "%Y/%j")) %>%
   # Extracting month from date  
-
+  mutate(month = month(date)) %>%
+  mutate(month_abb = month(date, label = T))
 
 fe_month
 ```
 
 Now, let's summarize daily weather variables based on month.  
 ```{r fe_month_sum}
-fe_month_sum 
+fe_month_sum <- fe_month %>%
+  group_by(year, site, month_abb, strength_gtex) %>%
+  summarise(across(.cols = c(dayl.s,
+                             srad.wm2,
+                             tmax.c,
+                             tmin.c,
+                             vp.pa
+                             ),
+                   .fns = mean,
+                   .names = "mean_{.col}"
+                   ),
+            across(.cols = prcp.mm,
+                   .fns = sum,
+                   .names = "sum_{.col}"
+                   )
+            ) %>%
+  ungroup()
 
 
 fe_month_sum
