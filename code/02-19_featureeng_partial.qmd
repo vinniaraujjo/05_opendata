@@ -168,8 +168,14 @@ fe_month %>%
 Now, what if we wanted to have month as part of the column name instead?  
 
 ```{r fe_month_sum_wide}
-fe_month_sum_wide 
+fe_month_sum_wide <- fe_month_sum %>%
+  pivot_longer(mean_dayl.s:sum_prcp.mm) %>% # changing how it displays
+  mutate(varname = paste0(name, "_",month_abb)) %>% # adding a column with the future column name
+  dplyr::select(-name,-month_abb) %>% # making sure pivot wider would work properly
+  pivot_wider(names_from = varname,
+              values_from = value) %>%
   # Rounding to one decimal point
+  mutate(across(c(3:75), ~round(.,1)))
 
 fe_month_sum_wide  
 ```
@@ -184,15 +190,42 @@ Let's make a ridge plot to visualize the distribution of one variable over month
 
 ```{r}
 #install.packages("ggridges")
-library(ggridges)
-
-
+library(ggridges) # 
+ggplot(data = fe_month_sum,
+       aes(y = month_abb,
+           x = mean_tmax.c,
+           fill = stat(x))
+           ) +
+  geom_density_ridges_gradient(scale = 2,
+                               rel_min_height = 0.01) + # alpha = transparency on ggplot
+  scale_fill_viridis_c(option = "C", alpha = 0.2) +
+  theme(legend.position = "none") + # he said I have to know this for the test
+  labs(x="Monthly-averaged maximum temperature (C)",
+       y="Month"
+       )
+  
 ```
 
 Now let's do that for all variables.  
 ```{r}
-finalplots 
+finalplots <- fe_month_sum %>%
+  pivot_longer(mean_dayl.s:sum_prcp.mm) %>%
+  group_by(name) %>%
+  nest() %>%
+  mutate(plot = map2(data, name,
+                     ~ggplot(data = .x, 
+       aes(y = month_abb,
+           x = value,
+           fill = stat(x))
+           ) +
+  geom_density_ridges_gradient(scale = 2,
+                               rel_min_height = 0.01) + # alpha = transparency on ggplot
+  scale_fill_viridis_c(option = "C", alpha = 0.2) +
+  theme(legend.position = "none") + # he said I have to know this for the test
+  labs(y="Month")
+                     ))
   
+finalplots$plot
   
 ```
 
